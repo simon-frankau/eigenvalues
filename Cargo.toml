@@ -1,0 +1,10 @@
+[package]
+name = "eigenvalues"
+version = "0.1.0"
+authors = ["Simon Frankau <sgf@arbitrary.name>"]
+edition = "2018"
+
+[dependencies]
+nalgebra = "*"
+rand = "*"
+rand_pcg = "*"
