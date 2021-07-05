@@ -10,6 +10,10 @@ use plotters::prelude::*;
 const OUT_FILE_NAME: &str = "out/dist.png";
 const RANDOM_SEED: u64 = 42;
 
+////////////////////////////////////////////////////////////////////////
+// Random matrix generation
+//
+
 fn random_matrix(r: usize, c: usize) -> DMatrix<f64> {
     let rng = Pcg64::seed_from_u64(RANDOM_SEED);
     let mut mat = DMatrix::from_iterator(r, c, rng.sample_iter(Standard).take(r * c));
@@ -19,15 +23,32 @@ fn random_matrix(r: usize, c: usize) -> DMatrix<f64> {
     mat
 }
 
+////////////////////////////////////////////////////////////////////////
+// Graph plotting functions
+//
 // Based on https://github.com/38/plotters/blob/master/examples/normal-dist.rs
-fn plot_complex(v: &DVector<Complex<f64>>) -> Result<(), Box<dyn std::error::Error>> {
-    let root = BitMapBackend::new(OUT_FILE_NAME, (1024, 1024)).into_drawing_area();
+//
 
-    root.fill(&WHITE)?;
+// Generate a drawing area we will use over multiple frames.
+// TODO: Use over multiple frames!
+//
+// The type paramter to BitMapBackend is... the lifetime of the file
+// name. Which apparently pollutes everything (see plot_complex). *sigh*
+fn new_plot() -> DrawingArea<BitMapBackend<'static>, plotters::coord::Shift> {
+    BitMapBackend::new(OUT_FILE_NAME, (1024, 1024)).into_drawing_area()
+}
 
-    let random_points: Vec<(f64, f64)> = v.iter().map(|c| (c.re, c.im)).collect();
+// Plot a set of points into the given drawing area.
+fn plot_complex<DB: DrawingBackend>(
+    drawing_area: &mut DrawingArea<DB, plotters::coord::Shift>,
+    v: &DVector<Complex<f64>>,
+) -> Result<(), Box<dyn std::error::Error>>
+where <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static {
+    drawing_area.fill(&WHITE)?;
 
-    let mut scatter_ctx = ChartBuilder::on(&root)
+    let points: Vec<(f64, f64)> = v.iter().map(|c| (c.re, c.im)).collect();
+
+    let mut scatter_ctx = ChartBuilder::on(&drawing_area)
         .x_label_area_size(40)
         .y_label_area_size(40)
         .build_cartesian_2d(-1f64..1f64, -1f64..1f64)?;
@@ -39,16 +60,18 @@ fn plot_complex(v: &DVector<Complex<f64>>) -> Result<(), Box<dyn std::error::Err
         .draw()?;
 
     scatter_ctx.draw_series(
-        random_points
+        points
             .iter()
             .map(|(x, y)| Circle::new((*x, *y), 2, BLACK.filled())),
     )?;
 
     // To avoid the IO failure being ignored silently, we manually call the present function
-    root.present().expect(
+    drawing_area.present().expect(
         "Unable to write result to file, please make sure 'out' dir exists under current dir",
     );
-    println!("Result has been saved to {}", OUT_FILE_NAME);
+    if cfg!(debug) {
+        println!("Frame has been written to {}", OUT_FILE_NAME);
+    }
 
     Ok(())
 }
@@ -67,6 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if cfg!(debug) {
         println!("{:}", &eigenvalues);
     }
-    plot_complex(&eigenvalues)?;
+    let mut drawing_area = new_plot();
+    plot_complex(&mut drawing_area, &eigenvalues)?;
     Ok(())
 }
