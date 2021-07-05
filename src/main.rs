@@ -7,7 +7,9 @@ use rand_pcg::Pcg64;
 
 use plotters::prelude::*;
 
-const OUT_FILE_NAME: &str = "out/dist.png";
+const OUT_FILE_NAME: &str = "out/dist.gif";
+const FRAME_DELAY: u32 = 10;
+
 const RANDOM_SEED: u64 = 42;
 
 ////////////////////////////////////////////////////////////////////////
@@ -30,12 +32,12 @@ fn random_matrix(r: usize, c: usize) -> DMatrix<f64> {
 //
 
 // Generate a drawing area we will use over multiple frames.
-// TODO: Use over multiple frames!
 //
 // The type paramter to BitMapBackend is... the lifetime of the file
 // name. Which apparently pollutes everything (see plot_complex). *sigh*
-fn new_plot() -> DrawingArea<BitMapBackend<'static>, plotters::coord::Shift> {
-    BitMapBackend::new(OUT_FILE_NAME, (1024, 1024)).into_drawing_area()
+fn new_plot() -> Result<DrawingArea<BitMapBackend<'static>, plotters::coord::Shift>, Box<dyn std::error::Error>> {
+    let backend = BitMapBackend::gif(OUT_FILE_NAME, (1024, 1024), FRAME_DELAY)?;
+    Ok(backend.into_drawing_area())
 }
 
 // Plot a set of points into the given drawing area.
@@ -110,7 +112,11 @@ where <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let n = 1000;
     let mat = random_matrix(n, n);
-    let mut drawing_area = new_plot();
-    plot_submatrix(&mut drawing_area, &mat, 1000)?;
+    let mut drawing_area = new_plot()?;
+    for n in (10..1000).step_by(10) {
+        // This could be slow, so let's lot progress.
+        println!("Generating frame for {} x {}", n, n);
+        plot_submatrix(&mut drawing_area, &mat, n)?;
+    }
     Ok(())
 }
