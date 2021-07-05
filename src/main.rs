@@ -76,21 +76,41 @@ where <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static {
     Ok(())
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let n = 1000;
-    let mat = random_matrix(n, n);
+////////////////////////////////////////////////////////////////////////
+// And the core animcation...
+//
+
+// Plot the eigenvalues of the upper-left n x n sub-matrix.
+fn plot_submatrix<DB: DrawingBackend>(
+    drawing_area: &mut DrawingArea<DB, plotters::coord::Shift>,
+    base_mat: &DMatrix<f64>,
+    n: usize
+) -> Result<(), Box<dyn std::error::Error>>
+where <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static {
+    let mat = base_mat.clone().resize(n, n, 0.0);
+
     let mean = mat.iter().sum::<f64>() / mat.len() as f64;
     let var = mat.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / mat.len() as f64;
     if cfg!(debug) {
         println!("mean: {} var: {}", mean, var);
     }
+
+    // Extract eigenvalues and normalise to unit circle.
     let mut eigenvalues = mat.complex_eigenvalues();
-    // Normalise to unit circle.
     eigenvalues.unscale_mut((n as f64).sqrt());
+
     if cfg!(debug) {
         println!("{:}", &eigenvalues);
     }
+
+    plot_complex(drawing_area, &eigenvalues)?;
+    Ok(())
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let n = 1000;
+    let mat = random_matrix(n, n);
     let mut drawing_area = new_plot();
-    plot_complex(&mut drawing_area, &eigenvalues)?;
+    plot_submatrix(&mut drawing_area, &mat, 1000)?;
     Ok(())
 }
