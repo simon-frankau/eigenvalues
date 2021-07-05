@@ -6,5 +6,6 @@ edition = "2018"
 
 [dependencies]
 nalgebra = "*"
+plotters = "*"
 rand = "*"
 rand_pcg = "*"
