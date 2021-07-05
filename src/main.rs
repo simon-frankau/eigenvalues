@@ -7,7 +7,7 @@ use rand_pcg::Pcg64;
 
 use plotters::prelude::*;
 
-const OUT_FILE_NAME: &'static str = "out/dist.png";
+const OUT_FILE_NAME: &str = "out/dist.png";
 const RANDOM_SEED: u64 = 42;
 
 fn random_matrix(r: usize, c: usize) -> DMatrix<f64> {
@@ -25,10 +25,7 @@ fn plot_complex(v: &DVector<Complex<f64>>) -> Result<(), Box<dyn std::error::Err
 
     root.fill(&WHITE)?;
 
-    let random_points: Vec<(f64, f64)> = v
-        .iter()
-        .map(|c| (c.re, c.im))
-        .collect();
+    let random_points: Vec<(f64, f64)> = v.iter().map(|c| (c.re, c.im)).collect();
 
     let mut scatter_ctx = ChartBuilder::on(&root)
         .x_label_area_size(40)
@@ -48,7 +45,9 @@ fn plot_complex(v: &DVector<Complex<f64>>) -> Result<(), Box<dyn std::error::Err
     )?;
 
     // To avoid the IO failure being ignored silently, we manually call the present function
-    root.present().expect("Unable to write result to file, please make sure 'out' dir exists under current dir");
+    root.present().expect(
+        "Unable to write result to file, please make sure 'out' dir exists under current dir",
+    );
     println!("Result has been saved to {}", OUT_FILE_NAME);
 
     Ok(())
