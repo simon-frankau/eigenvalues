@@ -10,20 +10,18 @@ use plotters::prelude::*;
 const OUT_FILE_NAME: &str = "out/dist.gif";
 const FRAME_DELAY: u32 = 10;
 
-const RANDOM_SEED: u64 = 182;
-
 // TODO: These values are reduced for testing (runs faster), but make
 // the results more easily visible too, so optimal values need to be
 // found. Previously, I'd used MATRIX_SIZE = 1000, STEPS = 100.
 const MATRIX_SIZE: usize = 100;
-const STEPS: usize = 50;
+const STEPS: usize = 5;
 
 ////////////////////////////////////////////////////////////////////////
 // Random matrix generation
 //
 
-fn random_matrix(r: usize, c: usize) -> DMatrix<f64> {
-    let rng = Pcg64::seed_from_u64(RANDOM_SEED);
+fn random_matrix(seed: u64, r: usize, c: usize) -> DMatrix<f64> {
+    let rng = Pcg64::seed_from_u64(seed);
     let mut mat = DMatrix::from_iterator(r, c, rng.sample_iter(Standard).take(r * c));
     // Scale 0.0..1.0 to -sqrt(12)/2..sqrt(12)/2 to make mean 0.0, variance 1.0.
     mat.add_scalar_mut(-0.5);
@@ -41,10 +39,10 @@ fn random_matrix(r: usize, c: usize) -> DMatrix<f64> {
 //
 // The type paramter to BitMapBackend is... the lifetime of the file
 // name. Which apparently pollutes everything (see plot_complex). *sigh*
-fn new_plot(
-) -> Result<DrawingArea<BitMapBackend<'static>, plotters::coord::Shift>, Box<dyn std::error::Error>>
+fn new_plot<'a>(name: &'a str
+) -> Result<DrawingArea<BitMapBackend<'a>, plotters::coord::Shift>, Box<dyn std::error::Error>>
 {
-    let backend = BitMapBackend::gif(OUT_FILE_NAME, (1024, 1024), FRAME_DELAY)?;
+    let backend = BitMapBackend::gif(name, (1024, 1024), FRAME_DELAY)?;
     Ok(backend.into_drawing_area())
 }
 
@@ -164,20 +162,24 @@ where
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mat = random_matrix(MATRIX_SIZE, MATRIX_SIZE);
-    let mut drawing_area = new_plot()?;
+    for seed in 100..120 {
+        let name = format!("out/dist_seed_{}.gif", seed);
+        print!("Writing {}", name);
+        let mat = random_matrix(seed, MATRIX_SIZE, MATRIX_SIZE);
+        let mut drawing_area = new_plot(&name)?;
 
-    // The initial eigenvalue is the associated diagonal element.
-    let mut highlighted = Complex::new(mat[(MATRIX_SIZE - 1, MATRIX_SIZE - 1)], 0.0);
-    // And we need to normalise it, like all displayed points:
-    highlighted /= (mat.nrows() as f64).sqrt();
+        // The initial eigenvalue is the associated diagonal element.
+        let mut highlighted = Complex::new(mat[(MATRIX_SIZE - 1, MATRIX_SIZE - 1)], 0.0);
+        // And we need to normalise it, like all displayed points:
+        highlighted /= (mat.nrows() as f64).sqrt();
 
-    for lerp_step in 0..STEPS {
-        // This could be slow, so let's log progress.
-        println!("Generating frame for {} of {}", lerp_step + 1, STEPS);
+        for lerp_step in 0..STEPS {
+            // This could be slow, so let's log progress.
+            println!("Generating frame for {} of {}", lerp_step + 1, STEPS);
 
-        let lerp = lerp_step as f64 / (STEPS - 1) as f64;
-        highlighted = plot_lerp_matrix(&mut drawing_area, &mat, lerp, highlighted)?;
+            let lerp = lerp_step as f64 / (STEPS - 1) as f64;
+            highlighted = plot_lerp_matrix(&mut drawing_area, &mat, lerp, highlighted)?;
+        }
     }
     Ok(())
 }
