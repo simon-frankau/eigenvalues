@@ -11,7 +11,12 @@ const OUT_FILE_NAME: &str = "out/dist.gif";
 const FRAME_DELAY: u32 = 10;
 
 const RANDOM_SEED: u64 = 42;
-const STEPS: usize = 100;
+
+// TODO: These values are reduced for testing (runs faster), but make
+// the results more easily visible too, so optimal values need to be
+// found. Previously, I'd used MATRIX_SIZE = 1000, STEPS = 100.
+const MATRIX_SIZE: usize = 50;
+const STEPS: usize = 50;
 
 ////////////////////////////////////////////////////////////////////////
 // Random matrix generation
@@ -36,7 +41,9 @@ fn random_matrix(r: usize, c: usize) -> DMatrix<f64> {
 //
 // The type paramter to BitMapBackend is... the lifetime of the file
 // name. Which apparently pollutes everything (see plot_complex). *sigh*
-fn new_plot() -> Result<DrawingArea<BitMapBackend<'static>, plotters::coord::Shift>, Box<dyn std::error::Error>> {
+fn new_plot(
+) -> Result<DrawingArea<BitMapBackend<'static>, plotters::coord::Shift>, Box<dyn std::error::Error>>
+{
     let backend = BitMapBackend::gif(OUT_FILE_NAME, (1024, 1024), FRAME_DELAY)?;
     Ok(backend.into_drawing_area())
 }
@@ -45,13 +52,16 @@ fn new_plot() -> Result<DrawingArea<BitMapBackend<'static>, plotters::coord::Shi
 fn plot_complex<DB: DrawingBackend>(
     drawing_area: &mut DrawingArea<DB, plotters::coord::Shift>,
     v: &DVector<Complex<f64>>,
+    highlighted: Complex<f64>,
 ) -> Result<(), Box<dyn std::error::Error>>
-where <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static {
+where
+    <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static,
+{
     drawing_area.fill(&WHITE)?;
 
     let points: Vec<(f64, f64)> = v.iter().map(|c| (c.re, c.im)).collect();
 
-    let mut scatter_ctx = ChartBuilder::on(&drawing_area)
+    let mut scatter_ctx = ChartBuilder::on(drawing_area)
         .x_label_area_size(40)
         .y_label_area_size(40)
         .build_cartesian_2d(-1f64..1f64, -1f64..1f64)?;
@@ -67,6 +77,12 @@ where <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static {
             .iter()
             .map(|(x, y)| Circle::new((*x, *y), 2, BLACK.filled())),
     )?;
+
+    scatter_ctx.draw_series([Circle::new(
+        (highlighted.re, highlighted.im),
+        5,
+        GREEN.filled(),
+    )])?;
 
     // To avoid the IO failure being ignored silently, we manually call the present function
     drawing_area.present().expect(
@@ -88,20 +104,28 @@ where <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static {
 // dimensions), to the full random maatrix.
 //
 // A "lerp" of 0 has an orthogonal eigenvector, 1 is the full matrix.
+//
+// "highlighted" is the last-seen location of the newest eigenvalue,
+// so we can highlight its movement. We return an updated loation for the
+// next iteration.
+
 fn plot_lerp_matrix<DB: DrawingBackend>(
     drawing_area: &mut DrawingArea<DB, plotters::coord::Shift>,
     base_mat: &DMatrix<f64>,
-    lerp: f64
-) -> Result<(), Box<dyn std::error::Error>>
-where <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static {
+    lerp: f64,
+    highlighted: Complex<f64>,
+) -> Result<Complex<f64>, Box<dyn std::error::Error>>
+where
+    <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static,
+{
     let mut mat = base_mat.clone();
 
     assert_eq!(mat.nrows(), mat.ncols());
     // Lerp the last row and column, except for the bottom-right element.
     let n = mat.nrows() - 1;
     for i in 0..n {
-        mat[(i,n)] = mat[(i,n)] * lerp;
-        mat[(n,i)] = mat[(n,i)] * lerp;
+        mat[(i, n)] *= lerp;
+        mat[(n, i)] *= lerp;
     }
 
     if cfg!(debug) {
@@ -118,20 +142,22 @@ where <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static {
         println!("{}", &eigenvalues);
     }
 
-    plot_complex(drawing_area, &eigenvalues)?;
-    Ok(())
+    // TODO: Update 'highlighted'.
+    plot_complex(drawing_area, &eigenvalues, highlighted)?;
+    Ok(highlighted)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let n = 1000;
-    let mat = random_matrix(n, n);
+    let mat = random_matrix(MATRIX_SIZE, MATRIX_SIZE);
     let mut drawing_area = new_plot()?;
+    // TODO: Initialise 'highlighted' correctly.
+    let mut highlighted = Complex::new(0.25, 0.1);
     for lerp_step in 0..STEPS {
         // This could be slow, so let's log progress.
         println!("Generating frame for {} of {}", lerp_step + 1, STEPS);
 
         let lerp = lerp_step as f64 / (STEPS - 1) as f64;
-        plot_lerp_matrix(&mut drawing_area, &mat, lerp)?;
+        highlighted = plot_lerp_matrix(&mut drawing_area, &mat, lerp, highlighted)?;
     }
     Ok(())
 }
