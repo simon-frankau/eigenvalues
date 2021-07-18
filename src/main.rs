@@ -10,11 +10,9 @@ use plotters::prelude::*;
 const OUT_FILE_NAME: &str = "out/dist.gif";
 const FRAME_DELAY: u32 = 10;
 
-const RANDOM_SEED: u64 = 182;
+// After a bit of trial and error, I like this one.
+const RANDOM_SEED: u64 = 116;
 
-// TODO: These values are reduced for testing (runs faster), but make
-// the results more easily visible too, so optimal values need to be
-// found. Previously, I'd used MATRIX_SIZE = 1000, STEPS = 100.
 const MATRIX_SIZE: usize = 100;
 const STEPS: usize = 50;
 
