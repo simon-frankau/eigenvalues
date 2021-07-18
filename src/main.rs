@@ -123,7 +123,7 @@ where
     assert_eq!(mat.nrows(), mat.ncols());
     // Lerp the last row and column, except for the bottom-right element.
     let n = mat.nrows() - 1;
-    for i in 0..n {
+    for i in 0..n { // NB: Upper limit skips last element.
         mat[(i, n)] *= lerp;
         mat[(n, i)] *= lerp;
     }
@@ -136,7 +136,7 @@ where
 
     // Extract eigenvalues and normalise to unit circle.
     let mut eigenvalues = mat.complex_eigenvalues();
-    eigenvalues.unscale_mut((n as f64).sqrt());
+    eigenvalues.unscale_mut((mat.nrows() as f64).sqrt());
 
     if cfg!(debug) {
         println!("{}", &eigenvalues);
@@ -150,8 +150,12 @@ where
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mat = random_matrix(MATRIX_SIZE, MATRIX_SIZE);
     let mut drawing_area = new_plot()?;
-    // TODO: Initialise 'highlighted' correctly.
-    let mut highlighted = Complex::new(0.25, 0.1);
+
+    // The initial eigenvalue is the associated diagonal element.
+    let mut highlighted = Complex::new(mat[(MATRIX_SIZE - 1, MATRIX_SIZE - 1)], 0.0);
+    // And we need to normalise it, like all displayed points:
+    highlighted /= (mat.nrows() as f64).sqrt();
+
     for lerp_step in 0..STEPS {
         // This could be slow, so let's log progress.
         println!("Generating frame for {} of {}", lerp_step + 1, STEPS);
