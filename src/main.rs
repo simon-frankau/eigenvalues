@@ -76,18 +76,12 @@ where
             .map(|(x, y)| Circle::new((*x, *y), 2, BLACK.filled())),
     )?;
 
-    scatter_ctx.draw_series([Circle::new(
-        (highlighted.re, highlighted.im),
-        5,
-        GREEN.filled(),
-    ),
-    // And the complex conjugate, knowing the eigenvalues of a real
-    // matrix come in pairs.
-    Circle::new(
-        (highlighted.re, -highlighted.im),
-        5,
-        GREEN.filled(),
-    )])?;
+    scatter_ctx.draw_series([
+        Circle::new((highlighted.re, highlighted.im), 5, GREEN.filled()),
+        // And the complex conjugate, knowing the eigenvalues of a real
+        // matrix come in pairs.
+        Circle::new((highlighted.re, -highlighted.im), 5, GREEN.filled()),
+    ])?;
 
     // To avoid the IO failure being ignored silently, we manually call the present function
     drawing_area.present().expect(
@@ -128,7 +122,8 @@ where
     assert_eq!(mat.nrows(), mat.ncols());
     // Lerp the last row and column, except for the bottom-right element.
     let n = mat.nrows() - 1;
-    for i in 0..n { // NB: Upper limit skips last element.
+    // NB: Upper limit skips last element.
+    for i in 0..n {
         mat[(i, n)] *= lerp;
         mat[(n, i)] *= lerp;
     }
@@ -148,14 +143,14 @@ where
     }
 
     // Update 'highlighted' to point to the nearest eigenvalue.
-    let highlighted_new = eigenvalues.iter()
+    let highlighted_new = *eigenvalues
+        .iter()
         .min_by(|&a, &b| {
             let an = (a - highlighted).norm_sqr();
             let bn = (b - highlighted).norm_sqr();
             an.partial_cmp(&bn).unwrap()
         })
-        .unwrap()
-        .clone();
+        .unwrap();
 
     plot_complex(drawing_area, &eigenvalues, highlighted_new)?;
     Ok(highlighted_new)
