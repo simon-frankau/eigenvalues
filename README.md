@@ -15,3 +15,22 @@ computational linear algebra (aka use the `nalgebra` library).
 ```
 cargo +nightly run eigenvalues
 ```
+
+## In more detail
+
+I first tried producing an animation of what happens as you increase
+the size of the matrix, adding more eigenvalues (more specifically, it
+plotted the eigenvalues as I took n x n sub-matrices of the full-sized
+matrix). This just produced a pattern of eigenvalues bobbling about a
+bit, and gave no real insight.
+
+I then tried interpolating between a matrix where the last eigenvector
+is orthogonal to all the others (forced by having the last dimension
+of matrix be diagonal-element only) and the full random matrix. This
+should effectively move between the eigenvalues of the n-1 x n-1
+matrix and the eigenvalues of the n x n matrix, so you can see the
+other eigenvalues adjust to deal with the new eigenvalue. The mean and
+variance will also slightly change, which I've not accounted for, but
+at high dimension I hope the effect is minor.
+
+TBH, the resulting animation is hard to interpret, too!

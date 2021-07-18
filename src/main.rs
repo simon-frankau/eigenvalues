@@ -11,6 +11,7 @@ const OUT_FILE_NAME: &str = "out/dist.gif";
 const FRAME_DELAY: u32 = 10;
 
 const RANDOM_SEED: u64 = 42;
+const STEPS: usize = 100;
 
 ////////////////////////////////////////////////////////////////////////
 // Random matrix generation
@@ -79,21 +80,33 @@ where <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static {
 }
 
 ////////////////////////////////////////////////////////////////////////
-// And the core animcation...
+// And the core animation...
 //
 
-// Plot the eigenvalues of the upper-left n x n sub-matrix.
-fn plot_submatrix<DB: DrawingBackend>(
+// Linearly interpolate an n x n from having the nth dimension being a
+// diagonal element only (i.e. completely orthogonal from all other
+// dimensions), to the full random maatrix.
+//
+// A "lerp" of 0 has an orthogonal eigenvector, 1 is the full matrix.
+fn plot_lerp_matrix<DB: DrawingBackend>(
     drawing_area: &mut DrawingArea<DB, plotters::coord::Shift>,
     base_mat: &DMatrix<f64>,
-    n: usize
+    lerp: f64
 ) -> Result<(), Box<dyn std::error::Error>>
 where <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static {
-    let mat = base_mat.clone().resize(n, n, 0.0);
+    let mut mat = base_mat.clone();
 
-    let mean = mat.iter().sum::<f64>() / mat.len() as f64;
-    let var = mat.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / mat.len() as f64;
+    assert_eq!(mat.nrows(), mat.ncols());
+    // Lerp the last row and column, except for the bottom-right element.
+    let n = mat.nrows() - 1;
+    for i in 0..n {
+        mat[(i,n)] = mat[(i,n)] * lerp;
+        mat[(n,i)] = mat[(n,i)] * lerp;
+    }
+
     if cfg!(debug) {
+        let mean = mat.iter().sum::<f64>() / mat.len() as f64;
+        let var = mat.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / mat.len() as f64;
         println!("mean: {} var: {}", mean, var);
     }
 
@@ -102,7 +115,7 @@ where <DB as plotters::prelude::DrawingBackend>::ErrorType: 'static {
     eigenvalues.unscale_mut((n as f64).sqrt());
 
     if cfg!(debug) {
-        println!("{:}", &eigenvalues);
+        println!("{}", &eigenvalues);
     }
 
     plot_complex(drawing_area, &eigenvalues)?;
@@ -113,10 +126,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let n = 1000;
     let mat = random_matrix(n, n);
     let mut drawing_area = new_plot()?;
-    for n in (10..1000).step_by(10) {
-        // This could be slow, so let's lot progress.
-        println!("Generating frame for {} x {}", n, n);
-        plot_submatrix(&mut drawing_area, &mat, n)?;
+    for lerp_step in 0..STEPS {
+        // This could be slow, so let's log progress.
+        println!("Generating frame for {} of {}", lerp_step + 1, STEPS);
+
+        let lerp = lerp_step as f64 / (STEPS - 1) as f64;
+        plot_lerp_matrix(&mut drawing_area, &mat, lerp)?;
     }
     Ok(())
 }
