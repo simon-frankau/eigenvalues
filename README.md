@@ -33,4 +33,6 @@ other eigenvalues adjust to deal with the new eigenvalue. The mean and
 variance will also slightly change, which I've not accounted for, but
 at high dimension I hope the effect is minor.
 
-TBH, the resulting animation is hard to interpret, too!
+To make it easier to interpret, I've highlighted the newly-added
+eigenvalue. You can see the other eigenvalues move around it. This
+seems pretty neat!

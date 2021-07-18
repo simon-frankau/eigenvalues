@@ -142,9 +142,18 @@ where
         println!("{}", &eigenvalues);
     }
 
-    // TODO: Update 'highlighted'.
-    plot_complex(drawing_area, &eigenvalues, highlighted)?;
-    Ok(highlighted)
+    // Update 'highlighted' to point to the nearest eigenvalue.
+    let highlighted_new = eigenvalues.iter()
+        .min_by(|&a, &b| {
+            let an = (a - highlighted).norm_sqr();
+            let bn = (b - highlighted).norm_sqr();
+            an.partial_cmp(&bn).unwrap()
+        })
+        .unwrap()
+        .clone();
+
+    plot_complex(drawing_area, &eigenvalues, highlighted_new)?;
+    Ok(highlighted_new)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
